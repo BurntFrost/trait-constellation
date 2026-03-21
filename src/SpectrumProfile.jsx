@@ -1,0 +1,462 @@
+import { useState, useCallback, useRef } from "react";
+
+const FACTORS = [
+  {
+    name: "Social Communication",
+    color: "#4ECDC4",
+    description: "How you navigate the basics of social interaction — initiating contact, reading the room, and the unwritten rules of human connection.",
+    traits: [
+      { id: "eye_contact", label: "Eye Contact Comfort", value: 3, tip: "Ease with maintaining or seeking eye contact during conversation. 1 = strongly avoid, 5 = very comfortable / neurotypical range." },
+      { id: "social_reciprocity", label: "Social Reciprocity", value: 3, tip: "Natural back-and-forth in social exchanges — responding to others' bids for connection, sharing reactions, emotional ping-pong." },
+      { id: "greetings", label: "Greetings & Small Talk", value: 2, tip: "Comfort with ritualistic social exchanges: hellos, goodbyes, weather chat, 'how was your weekend.' 1 = skip entirely, 5 = fluent." },
+      { id: "social_cues", label: "Reading Social Cues", value: 2, tip: "Picking up on unspoken signals — body language, tone shifts, when someone wants to leave a conversation, sarcasm detection." },
+    ],
+  },
+  {
+    name: "Conversational Skills",
+    color: "#45B7AA",
+    description: "The mechanics of dialogue — staying on track, knowing when to listen vs. speak, and modeling other people's mental states.",
+    traits: [
+      { id: "turn_taking", label: "Turn-Taking", value: 4, tip: "Natural rhythm of conversation — knowing when to speak, when to pause, not talking over people or going silent too long." },
+      { id: "topic_maintenance", label: "Staying On Topic", value: 5, tip: "Ability to stick with a conversational thread vs. veering into tangents. High scores can also mean you pull others back on track." },
+      { id: "perspective_taking", label: "Perspective-Taking", value: 4, tip: "Modeling what someone else knows, feels, or needs in a conversation. Theory of mind in action." },
+    ],
+  },
+  {
+    name: "Verbal Expression",
+    color: "#FF6B6B",
+    description: "How you use language — precision, tone, rhythm, and whether you naturally reach for metaphor or stay literal.",
+    traits: [
+      { id: "prosody", label: "Vocal Prosody/Tone", value: 4, tip: "Variation in pitch, rhythm, and emphasis when speaking. 1 = flat/monotone delivery, 5 = expressive and varied." },
+      { id: "precision_language", label: "Precision of Language", value: 5, tip: "Tendency toward exact, specific word choice. High scorers say 'SAML 2.0 attribute mapping' not 'that login thing.'" },
+      { id: "figurative", label: "Figurative Language Use", value: 4, tip: "Comfort with metaphor, idiom, and non-literal expression — both producing and understanding it." },
+    ],
+  },
+  {
+    name: "Restricted Interests",
+    color: "#FFE66D",
+    description: "The depth and intensity of your engagement with topics that capture your attention. Not a flaw — often a superpower.",
+    traits: [
+      { id: "deep_focus", label: "Deep-Dive Focus", value: 5, tip: "Ability (or compulsion) to go very deep into a subject. The person who reads the RFC, not just the blog post." },
+      { id: "topic_intensity", label: "Topic Intensity", value: 5, tip: "How consuming an interest becomes once engaged. 5 = will spend hours configuring SCIM provisioning on a weekend." },
+      { id: "novelty_seeking", label: "Novelty vs. Mastery", value: 4, tip: "Preference for exploring new domains (low) vs. mastering known ones (high). Most people are somewhere in between." },
+      { id: "system_fascination", label: "Systems Fascination", value: 5, tip: "Drawn to understanding how complex systems work — infrastructure, protocols, organizations, rule sets." },
+    ],
+  },
+  {
+    name: "Cognitive Patterns",
+    color: "#F7A072",
+    description: "Your thinking architecture — how you process information, spot patterns, and build mental models of the world.",
+    traits: [
+      { id: "detail_orientation", label: "Detail Orientation", value: 5, tip: "Noticing and caring about specifics others miss. The person who catches the wrong attribute mapping in a SAML config." },
+      { id: "pattern_recognition", label: "Pattern Recognition", value: 5, tip: "Spotting recurring structures across domains — seeing the same anti-pattern in code, process, and org design." },
+      { id: "systematic_thinking", label: "Systematic Thinking", value: 5, tip: "Approaching problems methodically rather than intuitively. Step 1 → Step 2 → verify → iterate." },
+      { id: "mental_models", label: "Mental Model Building", value: 5, tip: "Constructing internal representations of how things work, then stress-testing them. Engineers do this instinctively." },
+    ],
+  },
+  {
+    name: "Flexibility & Routine",
+    color: "#C3A6FF",
+    description: "How you handle change, ambiguity, and disruption — and whether you need things resolved or can sit with uncertainty.",
+    traits: [
+      { id: "routine_preference", label: "Preference for Routine", value: 3, tip: "How much you rely on predictable structure. 1 = thrives in chaos, 5 = strong need for consistent patterns." },
+      { id: "transition_ease", label: "Transition Ease", value: 4, tip: "How smoothly you shift between tasks or contexts. Low = hard context-switches, high = fluid." },
+      { id: "tolerance_ambiguity", label: "Tolerance of Ambiguity", value: 3, tip: "Comfort with incomplete information or unclear outcomes. Low scorers need to resolve unknowns quickly." },
+      { id: "need_closure", label: "Need for Closure", value: 4, tip: "Drive to reach a definitive answer or conclusion. High = won't leave a problem half-solved." },
+    ],
+  },
+  {
+    name: "Sensory Processing",
+    color: "#96E6A1",
+    description: "How your nervous system handles sensory input — sound, light, touch, texture. Wide variation even in neurotypical people.",
+    traits: [
+      { id: "noise_sensitivity", label: "Noise Sensitivity", value: 4, tip: "Reactivity to ambient sound — open offices, background music, sudden noises. 5 = needs noise-cancelling headphones to focus." },
+      { id: "visual_sensitivity", label: "Visual Sensitivity", value: 3, tip: "Response to bright lights, visual clutter, flickering screens. 1 = unbothered, 5 = strongly affected." },
+      { id: "tactile_sensitivity", label: "Tactile Sensitivity", value: 3, tip: "Sensitivity to textures, clothing tags, fabrics, temperature. 1 = doesn't notice, 5 = very selective." },
+      { id: "sensory_seeking", label: "Sensory Seeking", value: 3, tip: "Active pursuit of sensory input — loud music, spicy food, intense physical activity, fidget tools." },
+    ],
+  },
+  {
+    name: "Emotional Regulation",
+    color: "#FF8BA7",
+    description: "How you experience and manage emotions — especially frustration, stress, and the gap between how things are and how they should be.",
+    traits: [
+      { id: "frustration_threshold", label: "Frustration Intensity", value: 4, tip: "How strongly you react when things are broken or inefficient. High = intense frustration response (not necessarily visible to others)." },
+      { id: "recovery_speed", label: "Recovery Speed", value: 3, tip: "How quickly you return to baseline after frustration or stress. 1 = lingers for hours, 5 = bounces back fast." },
+      { id: "productive_channeling", label: "Productive Channeling", value: 5, tip: "Ability to convert negative emotion into useful action — fixing the bug, writing the doc, filing the ticket." },
+      { id: "emotional_expression", label: "Emotional Expression", value: 3, tip: "How readily emotions are externally visible or verbalized. 1 = very internal, 5 = very expressive." },
+    ],
+  },
+  {
+    name: "Motor Patterns",
+    color: "#B8D4E3",
+    description: "Physical movement patterns — repetitive motions, fidgeting, coordination. Often overlooked but part of the full picture.",
+    traits: [
+      { id: "repetitive_motor", label: "Repetitive Movements", value: 3, tip: "Rocking, hand-flapping, spinning, or other repeated physical movements. 1 = not present, 5 = frequent." },
+      { id: "fidgeting", label: "Fidgeting/Stimming", value: 4, tip: "Pen-clicking, leg-bouncing, hair-twisting, or other self-stimulatory behaviors. Nearly everyone does some of this." },
+      { id: "coordination", label: "Motor Coordination", value: 3, tip: "General physical coordination — handwriting, sports, fine motor tasks. 1 = clumsy, 5 = very coordinated." },
+    ],
+  },
+  {
+    name: "Executive Function",
+    color: "#E8A87C",
+    description: "The command center — planning, prioritizing, switching gears, and your relationship with efficiency (or the lack thereof).",
+    traits: [
+      { id: "optimization_drive", label: "Optimization Drive", value: 5, tip: "Compulsion to make things better, faster, more efficient. You don't just fix — you optimize." },
+      { id: "task_switching", label: "Task Switching", value: 4, tip: "Ability to shift between unrelated tasks without losing momentum. Low = needs long ramp-up time, high = fluid transitions." },
+      { id: "planning", label: "Planning & Sequencing", value: 5, tip: "Breaking complex work into ordered steps and executing them. The person who builds the runbook before touching prod." },
+      { id: "efficiency_intolerance", label: "Inefficiency Intolerance", value: 5, tip: "How much broken or wasteful processes bother you. 5 = visceral reaction to unnecessary manual steps." },
+    ],
+  },
+];
+
+const allTraitsInit = FACTORS.flatMap((f) =>
+  f.traits.map((t) => ({ ...t, factor: f.name, color: f.color }))
+);
+
+function polarToCartesian(cx, cy, r, angleDeg) {
+  const rad = ((angleDeg - 90) * Math.PI) / 180;
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function Tooltip({ text, children }) {
+  const [show, setShow] = useState(false);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const ref = useRef(null);
+
+  const handleEnter = (e) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPos({ x: rect.left + rect.width / 2, y: rect.top });
+    setShow(true);
+  };
+
+  return (
+    <span
+      ref={ref}
+      onMouseEnter={handleEnter}
+      onMouseLeave={() => setShow(false)}
+      onTouchStart={(e) => { handleEnter(e); setTimeout(() => setShow(false), 3000); }}
+      style={{ position: "relative", cursor: "help" }}
+    >
+      {children}
+      {show && (
+        <span
+          style={{
+            position: "fixed",
+            left: `clamp(16px, ${pos.x}px, calc(100vw - 280px))`,
+            top: pos.y - 8,
+            transform: "translateX(-50%) translateY(-100%)",
+            background: "#1e1e32",
+            border: "1px solid rgba(255,255,255,0.15)",
+            borderRadius: 8,
+            padding: "10px 14px",
+            fontSize: 11,
+            lineHeight: 1.65,
+            color: "#c0c0c0",
+            maxWidth: 270,
+            width: "max-content",
+            zIndex: 1000,
+            pointerEvents: "none",
+            boxShadow: "0 12px 40px rgba(0,0,0,0.6)",
+          }}
+        >
+          {text}
+        </span>
+      )}
+    </span>
+  );
+}
+
+function InfoIcon({ color = "#666", size = 13 }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" style={{ verticalAlign: "middle", marginLeft: 3, flexShrink: 0 }}>
+      <circle cx="8" cy="8" r="7" stroke={color} strokeWidth="1.5" />
+      <text x="8" y="11.5" textAnchor="middle" fill={color} fontSize="10" fontWeight="700" fontFamily="serif">i</text>
+    </svg>
+  );
+}
+
+function Chevron({ open, color = "#666" }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 16 16" fill="none" style={{ transition: "transform 0.25s ease", transform: open ? "rotate(90deg)" : "rotate(0deg)", flexShrink: 0 }}>
+      <path d="M6 4l4 4-4 4" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function RadarChart({ traits, size = 460, hoveredTrait }) {
+  const cx = size / 2;
+  const cy = size / 2;
+  const maxR = size * 0.38;
+  const levels = 5;
+  const angleStep = 360 / traits.length;
+
+  const gridLines = Array.from({ length: levels }, (_, i) => {
+    const r = (maxR / levels) * (i + 1);
+    return traits.map((_, j) => {
+      const p = polarToCartesian(cx, cy, r, j * angleStep);
+      return `${p.x},${p.y}`;
+    }).join(" ");
+  });
+
+  const dataPoints = traits.map((t, i) => {
+    const r = (maxR / levels) * t.value;
+    return { ...polarToCartesian(cx, cy, r, i * angleStep), trait: t };
+  });
+
+  const dataPath = dataPoints.map((p, i) => `${i === 0 ? "M" : "L"}${p.x},${p.y}`).join(" ") + "Z";
+
+  let idx = 0;
+  const factorArcs = FACTORS.map((f) => {
+    const start = idx * angleStep;
+    const end = (idx + f.traits.length) * angleStep;
+    idx += f.traits.length;
+    return { start, end, color: f.color };
+  });
+
+  return (
+    <svg viewBox={`0 0 ${size} ${size}`} style={{ width: "100%", maxWidth: size, display: "block", margin: "0 auto" }}>
+      <defs>
+        <radialGradient id="bgGrad" cx="50%" cy="50%" r="50%"><stop offset="0%" stopColor="#1a1a2e" /><stop offset="100%" stopColor="#0f0f1a" /></radialGradient>
+        <filter id="glow"><feGaussianBlur stdDeviation="3" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+        <filter id="dotGlow"><feGaussianBlur stdDeviation="5" result="b" /><feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge></filter>
+      </defs>
+      <circle cx={cx} cy={cy} r={size / 2} fill="url(#bgGrad)" />
+      {factorArcs.map((a, i) => {
+        const s1 = polarToCartesian(cx, cy, maxR + 4, a.start + 0.5);
+        const s2 = polarToCartesian(cx, cy, maxR + 4, a.end - 0.5);
+        return <path key={i} d={`M${s1.x},${s1.y} A${maxR + 4},${maxR + 4} 0 0,1 ${s2.x},${s2.y}`} fill="none" stroke={a.color} strokeWidth="3" opacity="0.5" />;
+      })}
+      {gridLines.map((pts, i) => <polygon key={i} points={pts} fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="1" />)}
+      {traits.map((_, i) => {
+        const p = polarToCartesian(cx, cy, maxR, i * angleStep);
+        return <line key={i} x1={cx} y1={cy} x2={p.x} y2={p.y} stroke="rgba(255,255,255,0.04)" strokeWidth="1" />;
+      })}
+      <path d={dataPath} fill="rgba(78,205,196,0.1)" stroke="rgba(78,205,196,0.5)" strokeWidth="1.5" filter="url(#glow)" />
+      {dataPoints.map((p, i) => {
+        const h = hoveredTrait === p.trait.id;
+        return (
+          <g key={i}>
+            <circle cx={p.x} cy={p.y} r={h ? 8 : 4} fill={p.trait.color} stroke={h ? "#fff" : "#0f0f1a"} strokeWidth={h ? 2 : 1.5} opacity={h ? 1 : 0.85} style={{ transition: "all 0.2s" }} filter={h ? "url(#dotGlow)" : undefined} />
+            {h && <>
+              <rect x={p.x - 60} y={p.y - 28} width={120} height={20} rx={5} fill="rgba(15,15,26,0.9)" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
+              <text x={p.x} y={p.y - 15} textAnchor="middle" fill="#fff" fontSize="9" fontFamily="'JetBrains Mono', monospace" fontWeight="600">{p.trait.label}: {p.trait.value}</text>
+            </>}
+          </g>
+        );
+      })}
+      {[1, 3, 5].map((v) => {
+        const p = polarToCartesian(cx, cy, (maxR / levels) * v, 0);
+        return <text key={v} x={p.x + 4} y={p.y - 2} fill="rgba(255,255,255,0.18)" fontSize="9" fontFamily="'JetBrains Mono', monospace">{v}</text>;
+      })}
+    </svg>
+  );
+}
+
+function TraitSlider({ trait, onHover, onLeave }) {
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0" }} onMouseEnter={() => onHover(trait.id)} onMouseLeave={onLeave}>
+      <Tooltip text={trait.tip}>
+        <span style={{ width: 170, fontSize: 11, color: "#bbb", fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "inline-flex", alignItems: "center", gap: 1 }}>
+          {trait.label}
+          <InfoIcon color={trait.color + "77"} />
+        </span>
+      </Tooltip>
+      <div style={{ flex: 1, display: "flex", gap: 4, alignItems: "center" }}>
+        {[1, 2, 3, 4, 5].map((v) => (
+          <button key={v} onClick={() => trait.onChange(v)} style={{
+            width: 28, height: 28, borderRadius: 6,
+            border: v === trait.value ? `2px solid ${trait.color}` : "1px solid rgba(255,255,255,0.06)",
+            cursor: "pointer",
+            background: v <= trait.value ? trait.color : "rgba(255,255,255,0.03)",
+            opacity: v <= trait.value ? (v === trait.value ? 1 : 0.5) : 0.25,
+            transition: "all 0.15s",
+            fontSize: 11, color: v <= trait.value ? "#0f0f1a" : "#555", fontWeight: 700,
+            fontFamily: "'JetBrains Mono', monospace",
+          }}>{v}</button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function CollapsibleSection({ title, description, color, children, badge }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div style={{
+      background: "rgba(255,255,255,0.015)", borderRadius: 10,
+      border: `1px solid ${open ? color + "33" : "rgba(255,255,255,0.04)"}`,
+      marginBottom: 6, overflow: "hidden", transition: "border-color 0.2s",
+    }}>
+      <button onClick={() => setOpen(!open)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "11px 14px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
+        <Chevron open={open} color={color} />
+        <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color, fontFamily: "'Space Grotesk', sans-serif" }}>{title}</span>
+        {badge && <span style={{ fontSize: 10, fontWeight: 700, color: "#0f0f1a", background: color, borderRadius: 4, padding: "2px 7px", fontFamily: "'JetBrains Mono', monospace", opacity: 0.8 }}>{badge}</span>}
+      </button>
+      {open && (
+        <div style={{ padding: "0 14px 14px", overflow: "hidden" }}>
+          {description && <p style={{ fontSize: 11, color: "#666", lineHeight: 1.65, margin: "0 0 10px", paddingLeft: 22 }}>{description}</p>}
+          <div style={{ paddingLeft: 22 }}>{children}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function InfoPanel({ title, color, open, onToggle, children }) {
+  return (
+    <div style={{
+      background: open ? `${color}08` : "rgba(255,255,255,0.02)",
+      border: `1px solid ${open ? color + "20" : "rgba(255,255,255,0.06)"}`,
+      borderRadius: 10, marginBottom: 8, overflow: "hidden", transition: "all 0.2s",
+    }}>
+      <button onClick={onToggle} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "none", border: "none", cursor: "pointer" }}>
+        <Chevron open={open} color={color} />
+        <span style={{ fontSize: 12, color: open ? color : "#888", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600 }}>{title}</span>
+      </button>
+      {open && <div style={{ padding: "0 14px 14px 38px", fontSize: 11, lineHeight: 1.7, color: "#999" }}>{children}</div>}
+    </div>
+  );
+}
+
+export default function SpectrumProfile() {
+  const [traits, setTraits] = useState(allTraitsInit);
+  const [hoveredTrait, setHoveredTrait] = useState(null);
+  const [openPanel, setOpenPanel] = useState(null);
+
+  const updateTrait = useCallback((id, v) => {
+    setTraits((prev) => prev.map((t) => (t.id === id ? { ...t, value: v } : t)));
+  }, []);
+
+  const togglePanel = (key) => setOpenPanel((prev) => (prev === key ? null : key));
+
+  const factorAverages = FACTORS.map((f) => {
+    const ft = traits.filter((t) => t.factor === f.name);
+    return { name: f.name, avg: ft.reduce((s, t) => s + t.value, 0) / ft.length, color: f.color };
+  });
+  const peakFactors = [...factorAverages].sort((a, b) => b.avg - a.avg).slice(0, 3);
+  const overallAvg = (traits.reduce((s, t) => s + t.value, 0) / traits.length).toFixed(1);
+
+  return (
+    <div style={{ minHeight: "100vh", background: "#0f0f1a", color: "#e0e0e0", fontFamily: "'JetBrains Mono', 'Fira Code', monospace", padding: "24px 16px" }}>
+      <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet" />
+
+      <div style={{ maxWidth: 720, margin: "0 auto" }}>
+        {/* Header */}
+        <div style={{ textAlign: "center", marginBottom: 16 }}>
+          <h1 style={{ fontSize: 24, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", color: "#4ECDC4", margin: 0, letterSpacing: "-0.5px" }}>
+            Trait Constellation
+          </h1>
+          <p style={{ fontSize: 11, color: "#555", margin: "6px 0 0", lineHeight: 1.5 }}>
+            39 traits · 10 factors · Inspired by the ASDQ model (Frazier et al., 2023)
+          </p>
+        </div>
+
+        {/* Info panels */}
+        <InfoPanel title="What is this?" color="#4ECDC4" open={openPanel === "about"} onToggle={() => togglePanel("about")}>
+          <p style={{ margin: "0 0 8px" }}>
+            The <strong style={{ color: "#ccc" }}>Autism Symptom Dimensions Questionnaire</strong> maps 39 traits across 10 factors into a radar chart. The Scientific American article (March 2026) showed that the autism spectrum isn't a linear "more/less" scale — it's a <strong style={{ color: "#ccc" }}>unique shape for every person</strong>, like a fingerprint.
+          </p>
+          <p style={{ margin: 0 }}>
+            This interactive version lets you explore your own shape. <strong style={{ color: "#4ECDC4" }}>Higher scores aren't inherently negative</strong> — deep focus, pattern recognition, and systematic thinking are often professional superpowers. The radar shows where you diverge from neurotypical baseline, not what's "wrong."
+          </p>
+        </InfoPanel>
+
+        <InfoPanel title="How these values were calibrated" color="#F7A072" open={openPanel === "method"} onToggle={() => togglePanel("method")}>
+          <p style={{ margin: "0 0 8px" }}>
+            These values are <strong style={{ color: "#F7A072" }}>your calibrated defaults</strong> — adjusted from the initial AI-estimated profile. Original estimates were based on conversation patterns; you corrected them based on lived experience.
+          </p>
+          <div style={{ marginBottom: 6 }}>
+            <span style={{ color: "#4ECDC4", fontWeight: 600 }}>Kept from original:</span> Cognitive Patterns (5.0), Executive Function (4.8), Restricted Interests (4.8), Conversational Skills (4.3), Verbal Expression (4.3), Flexibility &amp; Routine (3.5).
+          </div>
+          <div style={{ marginBottom: 6 }}>
+            <span style={{ color: "#FFE66D", fontWeight: 600 }}>Adjusted significantly:</span> Social Communication dropped from ~3.5 → 2.5. Sensory Processing and Motor Patterns both rose from ~2.0 → 3.3. Emotional Regulation shifted from 4.0 → 3.8.
+          </div>
+          <div>
+            <span style={{ color: "#FF8BA7", fontWeight: 600 }}>Note:</span> Individual trait distributions within factors are approximate — the factor averages match your screenshot, but you may want to fine-tune specific traits within each group.
+          </div>
+        </InfoPanel>
+
+        <InfoPanel title="How to read the scale (1–5)" color="#C3A6FF" open={openPanel === "scale"} onToggle={() => togglePanel("scale")}>
+          <p style={{ margin: "0 0 10px" }}>
+            Each trait is scored 1–5 measuring <strong style={{ color: "#ccc" }}>divergence from neurotypical baseline</strong> — not severity or dysfunction. Many high-scoring traits are strengths.
+          </p>
+          {[
+            { v: 1, l: "Minimal / Not present", d: "Trait rarely observed. Neurotypical range." },
+            { v: 2, l: "Mild", d: "Occasionally present, minimal daily impact." },
+            { v: 3, l: "Moderate", d: "Noticeable. Sometimes affects how you navigate situations." },
+            { v: 4, l: "Significant", d: "Clearly present. Regularly shapes behavior or experience." },
+            { v: 5, l: "Very High", d: "Strongly present. A defining characteristic of your profile." },
+          ].map((s) => (
+            <div key={s.v} style={{ display: "flex", gap: 10, alignItems: "baseline", marginBottom: 5 }}>
+              <span style={{ width: 22, height: 22, borderRadius: 5, background: `rgba(195,166,255,${s.v * 0.16})`, border: "1px solid rgba(195,166,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#C3A6FF", flexShrink: 0 }}>{s.v}</span>
+              <div><span style={{ color: "#ddd", fontWeight: 600 }}>{s.l}</span><span style={{ color: "#666", marginLeft: 6 }}>— {s.d}</span></div>
+            </div>
+          ))}
+        </InfoPanel>
+
+        {/* Radar */}
+        <RadarChart traits={traits} hoveredTrait={hoveredTrait} />
+
+        {/* Factor sections */}
+        <div style={{ marginTop: 8, marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 4px", marginBottom: 8 }}>
+            <h2 style={{ fontSize: 14, fontWeight: 600, color: "#666", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+              Factors & Traits
+            </h2>
+            <span style={{ fontSize: 9, color: "#444" }}>
+              Tap to expand · hover{" "}
+              <InfoIcon color="#555" size={10} /> for details
+            </span>
+          </div>
+
+          {FACTORS.map((f) => {
+            const ft = traits.filter((t) => t.factor === f.name);
+            const avg = (ft.reduce((s, t) => s + t.value, 0) / ft.length).toFixed(1);
+            return (
+              <CollapsibleSection key={f.name} title={f.name} description={f.description} color={f.color} badge={avg}>
+                {ft.map((t) => (
+                  <TraitSlider key={t.id} trait={{ ...t, onChange: (v) => updateTrait(t.id, v) }} onHover={setHoveredTrait} onLeave={() => setHoveredTrait(null)} />
+                ))}
+              </CollapsibleSection>
+            );
+          })}
+        </div>
+
+        {/* Summary */}
+        <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 10, padding: "16px 20px", border: "1px solid rgba(255,255,255,0.06)", marginBottom: 16 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+            <h3 style={{ fontSize: 13, fontWeight: 600, color: "#888", margin: 0, fontFamily: "'Space Grotesk', sans-serif" }}>Summary</h3>
+            <Tooltip text="The overall average across all 39 traits. This single number hides most of the interesting variation — the shape of your radar matters far more than its size.">
+              <span style={{ fontSize: 11, color: "#4ECDC4", fontWeight: 700, display: "inline-flex", alignItems: "center" }}>
+                Overall: {overallAvg}<InfoIcon color="#4ECDC488" />
+              </span>
+            </Tooltip>
+          </div>
+          {factorAverages.map((f) => (
+            <div key={f.name} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
+              <span style={{ width: 150, fontSize: 10, color: f.color, flexShrink: 0 }}>{f.name}</span>
+              <div style={{ flex: 1, height: 6, background: "rgba(255,255,255,0.04)", borderRadius: 3, overflow: "hidden" }}>
+                <div style={{ width: `${(f.avg / 5) * 100}%`, height: "100%", background: f.color, borderRadius: 3, opacity: 0.7, transition: "width 0.3s" }} />
+              </div>
+              <span style={{ fontSize: 11, color: "#777", width: 30, textAlign: "right" }}>{f.avg.toFixed(1)}</span>
+            </div>
+          ))}
+          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <span style={{ fontSize: 10, color: "#555" }}>Peak factors: </span>
+            {peakFactors.map((p, i) => (
+              <span key={p.name} style={{ fontSize: 10, color: p.color, fontWeight: 600 }}>
+                {p.name} ({p.avg.toFixed(1)}){i < 2 ? " · " : ""}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <p style={{ fontSize: 9, color: "#333", textAlign: "center", lineHeight: 1.6 }}>
+          Inspired by the Autism Symptom Dimensions Questionnaire (Frazier et al., 2023) as visualized in Scientific American, March 2026.
+          <br />This is an interactive conversation artifact — not a clinical or diagnostic instrument.
+        </p>
+      </div>
+    </div>
+  );
+}
