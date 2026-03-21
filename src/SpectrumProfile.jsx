@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from "react";
+import Onboarding from "./Onboarding.jsx";
 
 // Easter egg: personal profile data (activated by rapid-clicking the icon 10 times)
 const PERSONAL_VALUES = {
@@ -137,11 +138,28 @@ function Tooltip({ text, children }) {
   const [show, setShow] = useState(false);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const ref = useRef(null);
+  const hideTimer = useRef(null);
 
-  const handleEnter = (e) => {
+  const updatePos = (e) => {
     const rect = e.currentTarget.getBoundingClientRect();
     setPos({ x: rect.left + rect.width / 2, y: rect.top });
+  };
+
+  const handleEnter = (e) => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    updatePos(e);
     setShow(true);
+  };
+
+  const handleClick = (e) => {
+    updatePos(e);
+    setShow((prev) => {
+      if (!prev) {
+        hideTimer.current = setTimeout(() => setShow(false), 4000);
+        return true;
+      }
+      return false;
+    });
   };
 
   return (
@@ -149,7 +167,7 @@ function Tooltip({ text, children }) {
       ref={ref}
       onMouseEnter={handleEnter}
       onMouseLeave={() => setShow(false)}
-      onTouchStart={(e) => { handleEnter(e); setTimeout(() => setShow(false), 3000); }}
+      onClick={handleClick}
       style={{ position: "relative", cursor: "help" }}
     >
       {children}
@@ -163,11 +181,11 @@ function Tooltip({ text, children }) {
             background: "#1e1e32",
             border: "1px solid rgba(255,255,255,0.15)",
             borderRadius: 8,
-            padding: "10px 14px",
-            fontSize: 11,
+            padding: "12px 16px",
+            fontSize: 13,
             lineHeight: 1.65,
             color: "#c0c0c0",
-            maxWidth: 270,
+            maxWidth: 320,
             width: "max-content",
             zIndex: 1000,
             pointerEvents: "none",
@@ -198,7 +216,7 @@ function Chevron({ open, color = "#666" }) {
   );
 }
 
-function RadarChart({ traits, size = 460, hoveredTrait }) {
+function RadarChart({ traits, size = 560, hoveredTrait }) {
   const cx = size / 2;
   const cy = size / 2;
   const maxR = size * 0.38;
@@ -269,23 +287,23 @@ function RadarChart({ traits, size = 460, hoveredTrait }) {
 
 function TraitSlider({ trait, onHover, onLeave }) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "5px 0" }} onMouseEnter={() => onHover(trait.id)} onMouseLeave={onLeave}>
+    <div style={{ display: "flex", alignItems: "center", gap: 12, padding: "8px 0" }} onMouseEnter={() => onHover(trait.id)} onMouseLeave={onLeave}>
       <Tooltip text={trait.tip}>
-        <span style={{ width: 170, fontSize: 11, color: "#bbb", fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "inline-flex", alignItems: "center", gap: 1 }}>
+        <span style={{ width: 220, fontSize: 14, color: "#bbb", fontFamily: "'JetBrains Mono', monospace", flexShrink: 0, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", display: "inline-flex", alignItems: "center", gap: 2 }}>
           {trait.label}
-          <InfoIcon color={trait.color + "77"} />
+          <InfoIcon color={trait.color + "77"} size={14} />
         </span>
       </Tooltip>
-      <div style={{ flex: 1, display: "flex", gap: 4, alignItems: "center" }}>
+      <div style={{ flex: 1, display: "flex", gap: 6, alignItems: "center" }}>
         {[1, 2, 3, 4, 5].map((v) => (
           <button key={v} onClick={() => trait.onChange(v)} style={{
-            width: 28, height: 28, borderRadius: 6,
+            width: 36, height: 36, borderRadius: 7,
             border: v === trait.value ? `2px solid ${trait.color}` : "1px solid rgba(255,255,255,0.06)",
             cursor: "pointer",
             background: v <= trait.value ? trait.color : "rgba(255,255,255,0.03)",
             opacity: v <= trait.value ? (v === trait.value ? 1 : 0.5) : 0.25,
             transition: "all 0.15s",
-            fontSize: 11, color: v <= trait.value ? "#0f0f1a" : "#555", fontWeight: 700,
+            fontSize: 14, color: v <= trait.value ? "#0f0f1a" : "#555", fontWeight: 700,
             fontFamily: "'JetBrains Mono', monospace",
           }}>{v}</button>
         ))}
@@ -300,17 +318,17 @@ function CollapsibleSection({ title, description, color, children, badge }) {
     <div style={{
       background: "rgba(255,255,255,0.015)", borderRadius: 10,
       border: `1px solid ${open ? color + "33" : "rgba(255,255,255,0.04)"}`,
-      marginBottom: 6, overflow: "hidden", transition: "border-color 0.2s",
+      marginBottom: 8, overflow: "hidden", transition: "border-color 0.2s",
     }}>
-      <button onClick={() => setOpen(!open)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "11px 14px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
+      <button onClick={() => setOpen(!open)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", background: "none", border: "none", cursor: "pointer", textAlign: "left" }}>
         <Chevron open={open} color={color} />
-        <span style={{ flex: 1, fontSize: 13, fontWeight: 600, color, fontFamily: "'Space Grotesk', sans-serif" }}>{title}</span>
-        {badge && <span style={{ fontSize: 10, fontWeight: 700, color: "#0f0f1a", background: color, borderRadius: 4, padding: "2px 7px", fontFamily: "'JetBrains Mono', monospace", opacity: 0.8 }}>{badge}</span>}
+        <span style={{ flex: 1, fontSize: 16, fontWeight: 600, color, fontFamily: "'Space Grotesk', sans-serif" }}>{title}</span>
+        {badge && <span style={{ fontSize: 13, fontWeight: 700, color: "#0f0f1a", background: color, borderRadius: 5, padding: "3px 10px", fontFamily: "'JetBrains Mono', monospace", opacity: 0.8 }}>{badge}</span>}
       </button>
       {open && (
-        <div style={{ padding: "0 14px 14px", overflow: "hidden" }}>
-          {description && <p style={{ fontSize: 11, color: "#666", lineHeight: 1.65, margin: "0 0 10px", paddingLeft: 22 }}>{description}</p>}
-          <div style={{ paddingLeft: 22 }}>{children}</div>
+        <div style={{ padding: "0 18px 18px", overflow: "hidden" }}>
+          {description && <p style={{ fontSize: 13, color: "#666", lineHeight: 1.65, margin: "0 0 14px", paddingLeft: 26 }}>{description}</p>}
+          <div style={{ paddingLeft: 26 }}>{children}</div>
         </div>
       )}
     </div>
@@ -324,11 +342,11 @@ function InfoPanel({ title, color, open, onToggle, children }) {
       border: `1px solid ${open ? color + "20" : "rgba(255,255,255,0.06)"}`,
       borderRadius: 10, marginBottom: 8, overflow: "hidden", transition: "all 0.2s",
     }}>
-      <button onClick={onToggle} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 14px", background: "none", border: "none", cursor: "pointer" }}>
+      <button onClick={onToggle} style={{ width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "14px 18px", background: "none", border: "none", cursor: "pointer" }}>
         <Chevron open={open} color={color} />
-        <span style={{ fontSize: 12, color: open ? color : "#888", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600 }}>{title}</span>
+        <span style={{ fontSize: 15, color: open ? color : "#888", fontFamily: "'Space Grotesk', sans-serif", fontWeight: 600 }}>{title}</span>
       </button>
-      {open && <div style={{ padding: "0 14px 14px 38px", fontSize: 11, lineHeight: 1.7, color: "#999" }}>{children}</div>}
+      {open && <div style={{ padding: "0 18px 18px 44px", fontSize: 14, lineHeight: 1.7, color: "#999" }}>{children}</div>}
     </div>
   );
 }
@@ -337,8 +355,8 @@ function AppIcon({ onClick }) {
   return (
     <svg
       onClick={onClick}
-      width="36" height="36" viewBox="0 0 32 32"
-      style={{ cursor: "pointer", display: "block", margin: "0 auto 8px", userSelect: "none" }}
+      width="48" height="48" viewBox="0 0 32 32"
+      style={{ cursor: "pointer", display: "block", margin: "0 auto 10px", userSelect: "none" }}
     >
       <circle cx="16" cy="16" r="15" fill="#0f0f1a" stroke="#4ECDC4" strokeWidth="1.5"/>
       <polygon points="16,4 22,12 24,22 16,26 8,22 6,12" fill="none" stroke="#4ECDC4" strokeWidth="1.5" opacity="0.6"/>
@@ -354,6 +372,9 @@ function AppIcon({ onClick }) {
 }
 
 export default function SpectrumProfile() {
+  const [showOnboarding, setShowOnboarding] = useState(() => {
+    return !localStorage.getItem("tc_onboarded");
+  });
   const [traits, setTraits] = useState(allTraitsInit);
   const [hoveredTrait, setHoveredTrait] = useState(null);
   const [openPanel, setOpenPanel] = useState(null);
@@ -392,11 +413,22 @@ export default function SpectrumProfile() {
     };
   }, []);
 
+  const handleOnboardingComplete = useCallback((traitValues) => {
+    setTraits((prev) =>
+      prev.map((t) => ({ ...t, value: traitValues[t.id] ?? t.value }))
+    );
+    setShowOnboarding(false);
+  }, []);
+
   const updateTrait = useCallback((id, v) => {
     setTraits((prev) => prev.map((t) => (t.id === id ? { ...t, value: v } : t)));
   }, []);
 
-  const togglePanel = (key) => setOpenPanel((prev) => (prev === key ? null : key));
+  const togglePanel = useCallback((key) => setOpenPanel((prev) => (prev === key ? null : key)), []);
+
+  if (showOnboarding) {
+    return <Onboarding onComplete={handleOnboardingComplete} />;
+  }
 
   const factorAverages = FACTORS.map((f) => {
     const ft = traits.filter((t) => t.factor === f.name);
@@ -406,23 +438,23 @@ export default function SpectrumProfile() {
   const overallAvg = (traits.reduce((s, t) => s + t.value, 0) / traits.length).toFixed(1);
 
   return (
-    <div style={{ minHeight: "100vh", background: "#0f0f1a", color: "#e0e0e0", fontFamily: "'JetBrains Mono', 'Fira Code', monospace", padding: "24px 16px" }}>
+    <div style={{ minHeight: "100vh", background: "#0f0f1a", color: "#e0e0e0", fontFamily: "'JetBrains Mono', 'Fira Code', monospace", padding: "32px 24px" }}>
       <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet" />
       <style>{`@keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }`}</style>
 
-      <div style={{ maxWidth: 720, margin: "0 auto" }}>
+      <div style={{ maxWidth: 960, margin: "0 auto" }}>
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 16 }}>
           <AppIcon onClick={handleIconClick} />
-          <h1 style={{ fontSize: 24, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", color: "#4ECDC4", margin: 0, letterSpacing: "-0.5px" }}>
+          <h1 style={{ fontSize: 32, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", color: "#4ECDC4", margin: 0, letterSpacing: "-0.5px" }}>
             Trait Constellation
           </h1>
-          <p style={{ fontSize: 11, color: "#555", margin: "6px 0 0", lineHeight: 1.5 }}>
+          <p style={{ fontSize: 14, color: "#555", margin: "8px 0 0", lineHeight: 1.5 }}>
             39 traits · 10 factors · Inspired by the ASDQ model (Frazier et al., 2023)
           </p>
           {easterEggActive && (
             <p style={{
-              fontSize: 10, color: "#4ECDC4", margin: "8px 0 0",
+              fontSize: 13, color: "#4ECDC4", margin: "10px 0 0",
               animation: "pulse 1s ease-in-out infinite alternate",
               fontFamily: "'JetBrains Mono', monospace",
             }}>
@@ -467,8 +499,8 @@ export default function SpectrumProfile() {
             { v: 4, l: "Significant", d: "Clearly present. Regularly shapes behavior or experience." },
             { v: 5, l: "Very High", d: "Strongly present. A defining characteristic of your profile." },
           ].map((s) => (
-            <div key={s.v} style={{ display: "flex", gap: 10, alignItems: "baseline", marginBottom: 5 }}>
-              <span style={{ width: 22, height: 22, borderRadius: 5, background: `rgba(195,166,255,${s.v * 0.16})`, border: "1px solid rgba(195,166,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, color: "#C3A6FF", flexShrink: 0 }}>{s.v}</span>
+            <div key={s.v} style={{ display: "flex", gap: 12, alignItems: "baseline", marginBottom: 8 }}>
+              <span style={{ width: 28, height: 28, borderRadius: 6, background: `rgba(195,166,255,${s.v * 0.16})`, border: "1px solid rgba(195,166,255,0.3)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, fontWeight: 700, color: "#C3A6FF", flexShrink: 0 }}>{s.v}</span>
               <div><span style={{ color: "#ddd", fontWeight: 600 }}>{s.l}</span><span style={{ color: "#666", marginLeft: 6 }}>— {s.d}</span></div>
             </div>
           ))}
@@ -478,14 +510,14 @@ export default function SpectrumProfile() {
         <RadarChart traits={traits} hoveredTrait={hoveredTrait} />
 
         {/* Factor sections */}
-        <div style={{ marginTop: 8, marginBottom: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 4px", marginBottom: 8 }}>
-            <h2 style={{ fontSize: 14, fontWeight: 600, color: "#666", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
+        <div style={{ marginTop: 12, marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", padding: "0 4px", marginBottom: 12 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 600, color: "#666", fontFamily: "'Space Grotesk', sans-serif", margin: 0 }}>
               Factors & Traits
             </h2>
-            <span style={{ fontSize: 9, color: "#444" }}>
-              Tap to expand · hover{" "}
-              <InfoIcon color="#555" size={10} /> for details
+            <span style={{ fontSize: 12, color: "#444" }}>
+              Tap to expand · click{" "}
+              <InfoIcon color="#555" size={12} /> for details
             </span>
           </div>
 
@@ -503,35 +535,35 @@ export default function SpectrumProfile() {
         </div>
 
         {/* Summary */}
-        <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 10, padding: "16px 20px", border: "1px solid rgba(255,255,255,0.06)", marginBottom: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
-            <h3 style={{ fontSize: 13, fontWeight: 600, color: "#888", margin: 0, fontFamily: "'Space Grotesk', sans-serif" }}>Summary</h3>
+        <div style={{ background: "rgba(255,255,255,0.02)", borderRadius: 12, padding: "20px 24px", border: "1px solid rgba(255,255,255,0.06)", marginBottom: 24 }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16 }}>
+            <h3 style={{ fontSize: 17, fontWeight: 600, color: "#888", margin: 0, fontFamily: "'Space Grotesk', sans-serif" }}>Summary</h3>
             <Tooltip text="The overall average across all 39 traits. This single number hides most of the interesting variation — the shape of your radar matters far more than its size.">
-              <span style={{ fontSize: 11, color: "#4ECDC4", fontWeight: 700, display: "inline-flex", alignItems: "center" }}>
-                Overall: {overallAvg}<InfoIcon color="#4ECDC488" />
+              <span style={{ fontSize: 14, color: "#4ECDC4", fontWeight: 700, display: "inline-flex", alignItems: "center" }}>
+                Overall: {overallAvg}<InfoIcon color="#4ECDC488" size={14} />
               </span>
             </Tooltip>
           </div>
           {factorAverages.map((f) => (
-            <div key={f.name} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 6 }}>
-              <span style={{ width: 150, fontSize: 10, color: f.color, flexShrink: 0 }}>{f.name}</span>
-              <div style={{ flex: 1, height: 6, background: "rgba(255,255,255,0.04)", borderRadius: 3, overflow: "hidden" }}>
-                <div style={{ width: `${(f.avg / 5) * 100}%`, height: "100%", background: f.color, borderRadius: 3, opacity: 0.7, transition: "width 0.3s" }} />
+            <div key={f.name} style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+              <span style={{ width: 190, fontSize: 13, color: f.color, flexShrink: 0 }}>{f.name}</span>
+              <div style={{ flex: 1, height: 8, background: "rgba(255,255,255,0.04)", borderRadius: 4, overflow: "hidden" }}>
+                <div style={{ width: `${(f.avg / 5) * 100}%`, height: "100%", background: f.color, borderRadius: 4, opacity: 0.7, transition: "width 0.3s" }} />
               </div>
-              <span style={{ fontSize: 11, color: "#777", width: 30, textAlign: "right" }}>{f.avg.toFixed(1)}</span>
+              <span style={{ fontSize: 14, color: "#777", width: 36, textAlign: "right" }}>{f.avg.toFixed(1)}</span>
             </div>
           ))}
-          <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
-            <span style={{ fontSize: 10, color: "#555" }}>Peak factors: </span>
+          <div style={{ marginTop: 16, paddingTop: 14, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
+            <span style={{ fontSize: 13, color: "#555" }}>Peak factors: </span>
             {peakFactors.map((p, i) => (
-              <span key={p.name} style={{ fontSize: 10, color: p.color, fontWeight: 600 }}>
+              <span key={p.name} style={{ fontSize: 13, color: p.color, fontWeight: 600 }}>
                 {p.name} ({p.avg.toFixed(1)}){i < 2 ? " · " : ""}
               </span>
             ))}
           </div>
         </div>
 
-        <p style={{ fontSize: 9, color: "#333", textAlign: "center", lineHeight: 1.6 }}>
+        <p style={{ fontSize: 12, color: "#333", textAlign: "center", lineHeight: 1.6 }}>
           Inspired by the Autism Symptom Dimensions Questionnaire (Frazier et al., 2023) as visualized in Scientific American, March 2026.
           <br />This is an interactive conversation artifact — not a clinical or diagnostic instrument.
         </p>
