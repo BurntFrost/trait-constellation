@@ -216,7 +216,7 @@ function Chevron({ open, color = "#666" }) {
   );
 }
 
-function RadarChart({ traits, size = 560, hoveredTrait }) {
+function RadarChart({ traits, size = 560, hoveredTrait, onHover, onLeave }) {
   const cx = size / 2;
   const cy = size / 2;
   const maxR = size * 0.38;
@@ -268,11 +268,13 @@ function RadarChart({ traits, size = 560, hoveredTrait }) {
       {dataPoints.map((p, i) => {
         const h = hoveredTrait === p.trait.id;
         return (
-          <g key={i}>
-            <circle cx={p.x} cy={p.y} r={h ? 8 : 4} fill={p.trait.color} stroke={h ? "#fff" : "#0f0f1a"} strokeWidth={h ? 2 : 1.5} opacity={h ? 1 : 0.85} style={{ transition: "all 0.2s" }} filter={h ? "url(#dotGlow)" : undefined} />
+          <g key={i} onMouseEnter={() => onHover?.(p.trait.id)} onMouseLeave={() => onLeave?.()} style={{ cursor: "pointer" }}>
+            {/* Invisible hit area for easier hovering */}
+            <circle cx={p.x} cy={p.y} r={14} fill="transparent" />
+            <circle cx={p.x} cy={p.y} r={h ? 8 : 4} fill={p.trait.color} stroke={h ? "#fff" : "#0f0f1a"} strokeWidth={h ? 2 : 1.5} opacity={h ? 1 : 0.85} style={{ transition: "all 0.2s", pointerEvents: "none" }} filter={h ? "url(#dotGlow)" : undefined} />
             {h && <>
-              <rect x={p.x - 60} y={p.y - 28} width={120} height={20} rx={5} fill="rgba(15,15,26,0.9)" stroke="rgba(255,255,255,0.1)" strokeWidth="1" />
-              <text x={p.x} y={p.y - 15} textAnchor="middle" fill="#fff" fontSize="9" fontFamily="'JetBrains Mono', monospace" fontWeight="600">{p.trait.label}: {p.trait.value}</text>
+              <rect x={p.x - 70} y={p.y - 30} width={140} height={22} rx={6} fill="rgba(15,15,26,0.92)" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
+              <text x={p.x} y={p.y - 15} textAnchor="middle" fill="#fff" fontSize="11" fontFamily="'JetBrains Mono', monospace" fontWeight="600">{p.trait.label}: {p.trait.value}</text>
             </>}
           </g>
         );
@@ -507,7 +509,7 @@ export default function SpectrumProfile() {
         </InfoPanel>
 
         {/* Radar */}
-        <RadarChart traits={traits} hoveredTrait={hoveredTrait} />
+        <RadarChart traits={traits} hoveredTrait={hoveredTrait} onHover={setHoveredTrait} onLeave={() => setHoveredTrait(null)} />
 
         {/* Factor sections */}
         <div style={{ marginTop: 12, marginBottom: 24 }}>

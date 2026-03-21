@@ -468,7 +468,6 @@ export default function Onboarding({ onComplete }) {
       `}</style>
 
       <FloatingParticles color={phase === PHASES.QUESTIONS ? factorColor : "#4ECDC4"} />
-      <ScanLine />
 
       {/* Static noise overlay */}
       <div style={{
