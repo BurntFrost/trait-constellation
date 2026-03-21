@@ -1,4 +1,18 @@
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
+
+// Easter egg: personal profile data (activated by rapid-clicking the icon 10 times)
+const PERSONAL_VALUES = {
+  eye_contact: 3, social_reciprocity: 3, greetings: 2, social_cues: 2,
+  turn_taking: 4, topic_maintenance: 5, perspective_taking: 4,
+  prosody: 4, precision_language: 5, figurative: 4,
+  deep_focus: 5, topic_intensity: 5, novelty_seeking: 4, system_fascination: 5,
+  detail_orientation: 5, pattern_recognition: 5, systematic_thinking: 5, mental_models: 5,
+  routine_preference: 3, transition_ease: 4, tolerance_ambiguity: 3, need_closure: 4,
+  noise_sensitivity: 4, visual_sensitivity: 3, tactile_sensitivity: 3, sensory_seeking: 3,
+  frustration_threshold: 4, recovery_speed: 3, productive_channeling: 5, emotional_expression: 3,
+  repetitive_motor: 3, fidgeting: 4, coordination: 3,
+  optimization_drive: 5, task_switching: 4, planning: 5, efficiency_intolerance: 5,
+};
 
 const FACTORS = [
   {
@@ -8,8 +22,8 @@ const FACTORS = [
     traits: [
       { id: "eye_contact", label: "Eye Contact Comfort", value: 3, tip: "Ease with maintaining or seeking eye contact during conversation. 1 = strongly avoid, 5 = very comfortable / neurotypical range." },
       { id: "social_reciprocity", label: "Social Reciprocity", value: 3, tip: "Natural back-and-forth in social exchanges — responding to others' bids for connection, sharing reactions, emotional ping-pong." },
-      { id: "greetings", label: "Greetings & Small Talk", value: 2, tip: "Comfort with ritualistic social exchanges: hellos, goodbyes, weather chat, 'how was your weekend.' 1 = skip entirely, 5 = fluent." },
-      { id: "social_cues", label: "Reading Social Cues", value: 2, tip: "Picking up on unspoken signals — body language, tone shifts, when someone wants to leave a conversation, sarcasm detection." },
+      { id: "greetings", label: "Greetings & Small Talk", value: 3, tip: "Comfort with ritualistic social exchanges: hellos, goodbyes, weather chat, 'how was your weekend.' 1 = skip entirely, 5 = fluent." },
+      { id: "social_cues", label: "Reading Social Cues", value: 3, tip: "Picking up on unspoken signals — body language, tone shifts, when someone wants to leave a conversation, sarcasm detection." },
     ],
   },
   {
@@ -17,9 +31,9 @@ const FACTORS = [
     color: "#45B7AA",
     description: "The mechanics of dialogue — staying on track, knowing when to listen vs. speak, and modeling other people's mental states.",
     traits: [
-      { id: "turn_taking", label: "Turn-Taking", value: 4, tip: "Natural rhythm of conversation — knowing when to speak, when to pause, not talking over people or going silent too long." },
-      { id: "topic_maintenance", label: "Staying On Topic", value: 5, tip: "Ability to stick with a conversational thread vs. veering into tangents. High scores can also mean you pull others back on track." },
-      { id: "perspective_taking", label: "Perspective-Taking", value: 4, tip: "Modeling what someone else knows, feels, or needs in a conversation. Theory of mind in action." },
+      { id: "turn_taking", label: "Turn-Taking", value: 3, tip: "Natural rhythm of conversation — knowing when to speak, when to pause, not talking over people or going silent too long." },
+      { id: "topic_maintenance", label: "Staying On Topic", value: 3, tip: "Ability to stick with a conversational thread vs. veering into tangents. High scores can also mean you pull others back on track." },
+      { id: "perspective_taking", label: "Perspective-Taking", value: 3, tip: "Modeling what someone else knows, feels, or needs in a conversation. Theory of mind in action." },
     ],
   },
   {
@@ -27,9 +41,9 @@ const FACTORS = [
     color: "#FF6B6B",
     description: "How you use language — precision, tone, rhythm, and whether you naturally reach for metaphor or stay literal.",
     traits: [
-      { id: "prosody", label: "Vocal Prosody/Tone", value: 4, tip: "Variation in pitch, rhythm, and emphasis when speaking. 1 = flat/monotone delivery, 5 = expressive and varied." },
-      { id: "precision_language", label: "Precision of Language", value: 5, tip: "Tendency toward exact, specific word choice. High scorers say 'SAML 2.0 attribute mapping' not 'that login thing.'" },
-      { id: "figurative", label: "Figurative Language Use", value: 4, tip: "Comfort with metaphor, idiom, and non-literal expression — both producing and understanding it." },
+      { id: "prosody", label: "Vocal Prosody/Tone", value: 3, tip: "Variation in pitch, rhythm, and emphasis when speaking. 1 = flat/monotone delivery, 5 = expressive and varied." },
+      { id: "precision_language", label: "Precision of Language", value: 3, tip: "Tendency toward exact, specific word choice. High scorers say 'SAML 2.0 attribute mapping' not 'that login thing.'" },
+      { id: "figurative", label: "Figurative Language Use", value: 3, tip: "Comfort with metaphor, idiom, and non-literal expression — both producing and understanding it." },
     ],
   },
   {
@@ -37,10 +51,10 @@ const FACTORS = [
     color: "#FFE66D",
     description: "The depth and intensity of your engagement with topics that capture your attention. Not a flaw — often a superpower.",
     traits: [
-      { id: "deep_focus", label: "Deep-Dive Focus", value: 5, tip: "Ability (or compulsion) to go very deep into a subject. The person who reads the RFC, not just the blog post." },
-      { id: "topic_intensity", label: "Topic Intensity", value: 5, tip: "How consuming an interest becomes once engaged. 5 = will spend hours configuring SCIM provisioning on a weekend." },
-      { id: "novelty_seeking", label: "Novelty vs. Mastery", value: 4, tip: "Preference for exploring new domains (low) vs. mastering known ones (high). Most people are somewhere in between." },
-      { id: "system_fascination", label: "Systems Fascination", value: 5, tip: "Drawn to understanding how complex systems work — infrastructure, protocols, organizations, rule sets." },
+      { id: "deep_focus", label: "Deep-Dive Focus", value: 3, tip: "Ability (or compulsion) to go very deep into a subject. The person who reads the RFC, not just the blog post." },
+      { id: "topic_intensity", label: "Topic Intensity", value: 3, tip: "How consuming an interest becomes once engaged. 5 = will spend hours configuring SCIM provisioning on a weekend." },
+      { id: "novelty_seeking", label: "Novelty vs. Mastery", value: 3, tip: "Preference for exploring new domains (low) vs. mastering known ones (high). Most people are somewhere in between." },
+      { id: "system_fascination", label: "Systems Fascination", value: 3, tip: "Drawn to understanding how complex systems work — infrastructure, protocols, organizations, rule sets." },
     ],
   },
   {
@@ -48,10 +62,10 @@ const FACTORS = [
     color: "#F7A072",
     description: "Your thinking architecture — how you process information, spot patterns, and build mental models of the world.",
     traits: [
-      { id: "detail_orientation", label: "Detail Orientation", value: 5, tip: "Noticing and caring about specifics others miss. The person who catches the wrong attribute mapping in a SAML config." },
-      { id: "pattern_recognition", label: "Pattern Recognition", value: 5, tip: "Spotting recurring structures across domains — seeing the same anti-pattern in code, process, and org design." },
-      { id: "systematic_thinking", label: "Systematic Thinking", value: 5, tip: "Approaching problems methodically rather than intuitively. Step 1 → Step 2 → verify → iterate." },
-      { id: "mental_models", label: "Mental Model Building", value: 5, tip: "Constructing internal representations of how things work, then stress-testing them. Engineers do this instinctively." },
+      { id: "detail_orientation", label: "Detail Orientation", value: 3, tip: "Noticing and caring about specifics others miss. The person who catches the wrong attribute mapping in a SAML config." },
+      { id: "pattern_recognition", label: "Pattern Recognition", value: 3, tip: "Spotting recurring structures across domains — seeing the same anti-pattern in code, process, and org design." },
+      { id: "systematic_thinking", label: "Systematic Thinking", value: 3, tip: "Approaching problems methodically rather than intuitively. Step 1 → Step 2 → verify → iterate." },
+      { id: "mental_models", label: "Mental Model Building", value: 3, tip: "Constructing internal representations of how things work, then stress-testing them. Engineers do this instinctively." },
     ],
   },
   {
@@ -60,9 +74,9 @@ const FACTORS = [
     description: "How you handle change, ambiguity, and disruption — and whether you need things resolved or can sit with uncertainty.",
     traits: [
       { id: "routine_preference", label: "Preference for Routine", value: 3, tip: "How much you rely on predictable structure. 1 = thrives in chaos, 5 = strong need for consistent patterns." },
-      { id: "transition_ease", label: "Transition Ease", value: 4, tip: "How smoothly you shift between tasks or contexts. Low = hard context-switches, high = fluid." },
+      { id: "transition_ease", label: "Transition Ease", value: 3, tip: "How smoothly you shift between tasks or contexts. Low = hard context-switches, high = fluid." },
       { id: "tolerance_ambiguity", label: "Tolerance of Ambiguity", value: 3, tip: "Comfort with incomplete information or unclear outcomes. Low scorers need to resolve unknowns quickly." },
-      { id: "need_closure", label: "Need for Closure", value: 4, tip: "Drive to reach a definitive answer or conclusion. High = won't leave a problem half-solved." },
+      { id: "need_closure", label: "Need for Closure", value: 3, tip: "Drive to reach a definitive answer or conclusion. High = won't leave a problem half-solved." },
     ],
   },
   {
@@ -70,7 +84,7 @@ const FACTORS = [
     color: "#96E6A1",
     description: "How your nervous system handles sensory input — sound, light, touch, texture. Wide variation even in neurotypical people.",
     traits: [
-      { id: "noise_sensitivity", label: "Noise Sensitivity", value: 4, tip: "Reactivity to ambient sound — open offices, background music, sudden noises. 5 = needs noise-cancelling headphones to focus." },
+      { id: "noise_sensitivity", label: "Noise Sensitivity", value: 3, tip: "Reactivity to ambient sound — open offices, background music, sudden noises. 5 = needs noise-cancelling headphones to focus." },
       { id: "visual_sensitivity", label: "Visual Sensitivity", value: 3, tip: "Response to bright lights, visual clutter, flickering screens. 1 = unbothered, 5 = strongly affected." },
       { id: "tactile_sensitivity", label: "Tactile Sensitivity", value: 3, tip: "Sensitivity to textures, clothing tags, fabrics, temperature. 1 = doesn't notice, 5 = very selective." },
       { id: "sensory_seeking", label: "Sensory Seeking", value: 3, tip: "Active pursuit of sensory input — loud music, spicy food, intense physical activity, fidget tools." },
@@ -81,9 +95,9 @@ const FACTORS = [
     color: "#FF8BA7",
     description: "How you experience and manage emotions — especially frustration, stress, and the gap between how things are and how they should be.",
     traits: [
-      { id: "frustration_threshold", label: "Frustration Intensity", value: 4, tip: "How strongly you react when things are broken or inefficient. High = intense frustration response (not necessarily visible to others)." },
+      { id: "frustration_threshold", label: "Frustration Intensity", value: 3, tip: "How strongly you react when things are broken or inefficient. High = intense frustration response (not necessarily visible to others)." },
       { id: "recovery_speed", label: "Recovery Speed", value: 3, tip: "How quickly you return to baseline after frustration or stress. 1 = lingers for hours, 5 = bounces back fast." },
-      { id: "productive_channeling", label: "Productive Channeling", value: 5, tip: "Ability to convert negative emotion into useful action — fixing the bug, writing the doc, filing the ticket." },
+      { id: "productive_channeling", label: "Productive Channeling", value: 3, tip: "Ability to convert negative emotion into useful action — fixing the bug, writing the doc, filing the ticket." },
       { id: "emotional_expression", label: "Emotional Expression", value: 3, tip: "How readily emotions are externally visible or verbalized. 1 = very internal, 5 = very expressive." },
     ],
   },
@@ -93,7 +107,7 @@ const FACTORS = [
     description: "Physical movement patterns — repetitive motions, fidgeting, coordination. Often overlooked but part of the full picture.",
     traits: [
       { id: "repetitive_motor", label: "Repetitive Movements", value: 3, tip: "Rocking, hand-flapping, spinning, or other repeated physical movements. 1 = not present, 5 = frequent." },
-      { id: "fidgeting", label: "Fidgeting/Stimming", value: 4, tip: "Pen-clicking, leg-bouncing, hair-twisting, or other self-stimulatory behaviors. Nearly everyone does some of this." },
+      { id: "fidgeting", label: "Fidgeting/Stimming", value: 3, tip: "Pen-clicking, leg-bouncing, hair-twisting, or other self-stimulatory behaviors. Nearly everyone does some of this." },
       { id: "coordination", label: "Motor Coordination", value: 3, tip: "General physical coordination — handwriting, sports, fine motor tasks. 1 = clumsy, 5 = very coordinated." },
     ],
   },
@@ -102,10 +116,10 @@ const FACTORS = [
     color: "#E8A87C",
     description: "The command center — planning, prioritizing, switching gears, and your relationship with efficiency (or the lack thereof).",
     traits: [
-      { id: "optimization_drive", label: "Optimization Drive", value: 5, tip: "Compulsion to make things better, faster, more efficient. You don't just fix — you optimize." },
-      { id: "task_switching", label: "Task Switching", value: 4, tip: "Ability to shift between unrelated tasks without losing momentum. Low = needs long ramp-up time, high = fluid transitions." },
-      { id: "planning", label: "Planning & Sequencing", value: 5, tip: "Breaking complex work into ordered steps and executing them. The person who builds the runbook before touching prod." },
-      { id: "efficiency_intolerance", label: "Inefficiency Intolerance", value: 5, tip: "How much broken or wasteful processes bother you. 5 = visceral reaction to unnecessary manual steps." },
+      { id: "optimization_drive", label: "Optimization Drive", value: 3, tip: "Compulsion to make things better, faster, more efficient. You don't just fix — you optimize." },
+      { id: "task_switching", label: "Task Switching", value: 3, tip: "Ability to shift between unrelated tasks without losing momentum. Low = needs long ramp-up time, high = fluid transitions." },
+      { id: "planning", label: "Planning & Sequencing", value: 3, tip: "Breaking complex work into ordered steps and executing them. The person who builds the runbook before touching prod." },
+      { id: "efficiency_intolerance", label: "Inefficiency Intolerance", value: 3, tip: "How much broken or wasteful processes bother you. 5 = visceral reaction to unnecessary manual steps." },
     ],
   },
 ];
@@ -319,10 +333,64 @@ function InfoPanel({ title, color, open, onToggle, children }) {
   );
 }
 
+function AppIcon({ onClick }) {
+  return (
+    <svg
+      onClick={onClick}
+      width="36" height="36" viewBox="0 0 32 32"
+      style={{ cursor: "pointer", display: "block", margin: "0 auto 8px", userSelect: "none" }}
+    >
+      <circle cx="16" cy="16" r="15" fill="#0f0f1a" stroke="#4ECDC4" strokeWidth="1.5"/>
+      <polygon points="16,4 22,12 24,22 16,26 8,22 6,12" fill="none" stroke="#4ECDC4" strokeWidth="1.5" opacity="0.6"/>
+      <polygon points="16,6 20,11 23,18 16,24 9,18 7,11" fill="rgba(78,205,196,0.15)" stroke="#4ECDC4" strokeWidth="1" opacity="0.8"/>
+      <circle cx="16" cy="6" r="2" fill="#4ECDC4"/>
+      <circle cx="20" cy="11" r="2" fill="#F7A072"/>
+      <circle cx="23" cy="18" r="2" fill="#FFE66D"/>
+      <circle cx="16" cy="24" r="2" fill="#FF6B6B"/>
+      <circle cx="9" cy="18" r="2" fill="#C3A6FF"/>
+      <circle cx="7" cy="11" r="2" fill="#96E6A1"/>
+    </svg>
+  );
+}
+
 export default function SpectrumProfile() {
   const [traits, setTraits] = useState(allTraitsInit);
   const [hoveredTrait, setHoveredTrait] = useState(null);
   const [openPanel, setOpenPanel] = useState(null);
+  const [easterEggActive, setEasterEggActive] = useState(false);
+  const clickTimesRef = useRef([]);
+  const savedTraitsRef = useRef(null);
+  const easterEggTimerRef = useRef(null);
+
+  const handleIconClick = useCallback(() => {
+    if (easterEggActive) return;
+    const now = Date.now();
+    const clicks = clickTimesRef.current;
+    clicks.push(now);
+    // Keep only clicks within the last 3 seconds
+    const recent = clicks.filter((t) => now - t < 3000);
+    clickTimesRef.current = recent;
+    if (recent.length >= 10) {
+      clickTimesRef.current = [];
+      // Save current user traits, load personal profile briefly
+      savedTraitsRef.current = traits;
+      setTraits((prev) =>
+        prev.map((t) => ({ ...t, value: PERSONAL_VALUES[t.id] ?? t.value }))
+      );
+      setEasterEggActive(true);
+      easterEggTimerRef.current = setTimeout(() => {
+        setTraits(savedTraitsRef.current);
+        savedTraitsRef.current = null;
+        setEasterEggActive(false);
+      }, 5000);
+    }
+  }, [traits, easterEggActive]);
+
+  useEffect(() => {
+    return () => {
+      if (easterEggTimerRef.current) clearTimeout(easterEggTimerRef.current);
+    };
+  }, []);
 
   const updateTrait = useCallback((id, v) => {
     setTraits((prev) => prev.map((t) => (t.id === id ? { ...t, value: v } : t)));
@@ -340,16 +408,27 @@ export default function SpectrumProfile() {
   return (
     <div style={{ minHeight: "100vh", background: "#0f0f1a", color: "#e0e0e0", fontFamily: "'JetBrains Mono', 'Fira Code', monospace", padding: "24px 16px" }}>
       <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Space+Grotesk:wght@300;400;600;700&display=swap" rel="stylesheet" />
+      <style>{`@keyframes pulse { from { opacity: 0.5; } to { opacity: 1; } }`}</style>
 
       <div style={{ maxWidth: 720, margin: "0 auto" }}>
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 16 }}>
+          <AppIcon onClick={handleIconClick} />
           <h1 style={{ fontSize: 24, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", color: "#4ECDC4", margin: 0, letterSpacing: "-0.5px" }}>
             Trait Constellation
           </h1>
           <p style={{ fontSize: 11, color: "#555", margin: "6px 0 0", lineHeight: 1.5 }}>
             39 traits · 10 factors · Inspired by the ASDQ model (Frazier et al., 2023)
           </p>
+          {easterEggActive && (
+            <p style={{
+              fontSize: 10, color: "#4ECDC4", margin: "8px 0 0",
+              animation: "pulse 1s ease-in-out infinite alternate",
+              fontFamily: "'JetBrains Mono', monospace",
+            }}>
+              ✦ Sample profile loaded — reverting in a few seconds ✦
+            </p>
+          )}
         </div>
 
         {/* Info panels */}
@@ -362,18 +441,18 @@ export default function SpectrumProfile() {
           </p>
         </InfoPanel>
 
-        <InfoPanel title="How these values were calibrated" color="#F7A072" open={openPanel === "method"} onToggle={() => togglePanel("method")}>
+        <InfoPanel title="How to use this tool" color="#F7A072" open={openPanel === "method"} onToggle={() => togglePanel("method")}>
           <p style={{ margin: "0 0 8px" }}>
-            These values are <strong style={{ color: "#F7A072" }}>your calibrated defaults</strong> — adjusted from the initial AI-estimated profile. Original estimates were based on conversation patterns; you corrected them based on lived experience.
+            All traits start at <strong style={{ color: "#F7A072" }}>3 (moderate)</strong> — a neutral baseline. Adjust each slider to match your own experience and self-assessment.
           </p>
           <div style={{ marginBottom: 6 }}>
-            <span style={{ color: "#4ECDC4", fontWeight: 600 }}>Kept from original:</span> Cognitive Patterns (5.0), Executive Function (4.8), Restricted Interests (4.8), Conversational Skills (4.3), Verbal Expression (4.3), Flexibility &amp; Routine (3.5).
+            <span style={{ color: "#4ECDC4", fontWeight: 600 }}>Start broad:</span> Expand each factor group and get a sense of the traits within it. Don't overthink individual scores — you can always come back and refine.
           </div>
           <div style={{ marginBottom: 6 }}>
-            <span style={{ color: "#FFE66D", fontWeight: 600 }}>Adjusted significantly:</span> Social Communication dropped from ~3.5 → 2.5. Sensory Processing and Motor Patterns both rose from ~2.0 → 3.3. Emotional Regulation shifted from 4.0 → 3.8.
+            <span style={{ color: "#FFE66D", fontWeight: 600 }}>Watch the radar:</span> As you adjust traits, the radar chart updates in real time. The shape of your constellation matters more than any single number.
           </div>
           <div>
-            <span style={{ color: "#FF8BA7", fontWeight: 600 }}>Note:</span> Individual trait distributions within factors are approximate — the factor averages match your screenshot, but you may want to fine-tune specific traits within each group.
+            <span style={{ color: "#FF8BA7", fontWeight: 600 }}>No wrong answers:</span> This is a self-reflection tool, not a diagnostic instrument. Your lived experience is the best guide for these values.
           </div>
         </InfoPanel>
 
