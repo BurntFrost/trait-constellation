@@ -380,10 +380,10 @@ function InfoPanel({ title, color, open, onToggle, children }) {
   );
 }
 
-function AppIcon({ onDoubleClick }) {
+function AppIcon({ onClick }) {
   return (
     <svg
-      onDoubleClick={onDoubleClick}
+      onClick={onClick}
       width="48" height="48" viewBox="0 0 32 32"
       style={{ cursor: "pointer", display: "block", margin: "0 auto 10px", userSelect: "none" }}
     >
@@ -408,21 +408,21 @@ export default function SpectrumProfile() {
   const [hoveredTrait, setHoveredTrait] = useState(null);
   const [openPanel, setOpenPanel] = useState(null);
   const [easterEggActive, setEasterEggActive] = useState(false);
-  const dblClickTimesRef = useRef([]);
+  const clickTimesRef = useRef([]);
   const savedTraitsRef = useRef(null);
 
-  // Easter egg: Cmd + double-click the icon 10 times to reveal personal profile
-  const handleIconDoubleClick = useCallback((e) => {
+  // Easter egg: Cmd + click the icon 10 times to reveal personal profile
+  const handleIconClick = useCallback((e) => {
     if (easterEggActive) return;
     if (!e.metaKey) return; // must hold Command key
     const now = Date.now();
-    const clicks = dblClickTimesRef.current;
+    const clicks = clickTimesRef.current;
     clicks.push(now);
-    // Keep only double-clicks within the last 6 seconds
-    const recent = clicks.filter((t) => now - t < 6000);
-    dblClickTimesRef.current = recent;
+    // Keep only clicks within the last 10 seconds
+    const recent = clicks.filter((t) => now - t < 10000);
+    clickTimesRef.current = recent;
     if (recent.length >= 10) {
-      dblClickTimesRef.current = [];
+      clickTimesRef.current = [];
       savedTraitsRef.current = traits;
       setTraits((prev) =>
         prev.map((t) => ({ ...t, value: PERSONAL_VALUES[t.id] ?? t.value }))
@@ -476,7 +476,7 @@ export default function SpectrumProfile() {
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <AppIcon onDoubleClick={handleIconDoubleClick} />
+          <AppIcon onClick={handleIconClick} />
           <h1 style={{ fontSize: 32, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", color: "#4ECDC4", margin: 0, letterSpacing: "-0.5px" }}>
             Trait Constellation
           </h1>
