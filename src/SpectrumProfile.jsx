@@ -380,10 +380,10 @@ function InfoPanel({ title, color, open, onToggle, children }) {
   );
 }
 
-function AppIcon({ onClick }) {
+function AppIcon({ onDoubleClick }) {
   return (
     <svg
-      onClick={onClick}
+      onDoubleClick={onDoubleClick}
       width="48" height="48" viewBox="0 0 32 32"
       style={{ cursor: "pointer", display: "block", margin: "0 auto 10px", userSelect: "none" }}
     >
@@ -408,39 +408,41 @@ export default function SpectrumProfile() {
   const [hoveredTrait, setHoveredTrait] = useState(null);
   const [openPanel, setOpenPanel] = useState(null);
   const [easterEggActive, setEasterEggActive] = useState(false);
-  const clickTimesRef = useRef([]);
+  const dblClickTimesRef = useRef([]);
   const savedTraitsRef = useRef(null);
-  const easterEggTimerRef = useRef(null);
 
-  const handleIconClick = useCallback(() => {
+  // Easter egg: Cmd + double-click the icon 10 times to reveal personal profile
+  const handleIconDoubleClick = useCallback((e) => {
     if (easterEggActive) return;
+    if (!e.metaKey) return; // must hold Command key
     const now = Date.now();
-    const clicks = clickTimesRef.current;
+    const clicks = dblClickTimesRef.current;
     clicks.push(now);
-    // Keep only clicks within the last 3 seconds
-    const recent = clicks.filter((t) => now - t < 3000);
-    clickTimesRef.current = recent;
+    // Keep only double-clicks within the last 6 seconds
+    const recent = clicks.filter((t) => now - t < 6000);
+    dblClickTimesRef.current = recent;
     if (recent.length >= 10) {
-      clickTimesRef.current = [];
-      // Save current user traits, load personal profile briefly
+      dblClickTimesRef.current = [];
       savedTraitsRef.current = traits;
       setTraits((prev) =>
         prev.map((t) => ({ ...t, value: PERSONAL_VALUES[t.id] ?? t.value }))
       );
       setEasterEggActive(true);
-      easterEggTimerRef.current = setTimeout(() => {
-        setTraits(savedTraitsRef.current);
-        savedTraitsRef.current = null;
-        setEasterEggActive(false);
-      }, 5000);
     }
   }, [traits, easterEggActive]);
 
+  // Escape key hides the easter egg and restores user data
   useEffect(() => {
-    return () => {
-      if (easterEggTimerRef.current) clearTimeout(easterEggTimerRef.current);
+    const handleKeyDown = (e) => {
+      if (e.key === "Escape" && easterEggActive && savedTraitsRef.current) {
+        setTraits(savedTraitsRef.current);
+        savedTraitsRef.current = null;
+        setEasterEggActive(false);
+      }
     };
-  }, []);
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [easterEggActive]);
 
   const handleOnboardingComplete = useCallback((traitValues) => {
     setTraits((prev) =>
@@ -474,7 +476,7 @@ export default function SpectrumProfile() {
       <div style={{ maxWidth: 960, margin: "0 auto" }}>
         {/* Header */}
         <div style={{ textAlign: "center", marginBottom: 16 }}>
-          <AppIcon onClick={handleIconClick} />
+          <AppIcon onDoubleClick={handleIconDoubleClick} />
           <h1 style={{ fontSize: 32, fontWeight: 700, fontFamily: "'Space Grotesk', sans-serif", color: "#4ECDC4", margin: 0, letterSpacing: "-0.5px" }}>
             Trait Constellation
           </h1>
@@ -487,7 +489,7 @@ export default function SpectrumProfile() {
               animation: "pulse 1s ease-in-out infinite alternate",
               fontFamily: "'JetBrains Mono', monospace",
             }}>
-              ✦ Sample profile loaded — reverting in a few seconds ✦
+              ✦ Sample profile loaded — press Esc to dismiss ✦
             </p>
           )}
         </div>
